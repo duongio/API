@@ -203,3 +203,84 @@ getTopProducts.onclick = () => {
             }
         })
 }
+
+const getTopSelling = document.getElementById('get_top_selling');
+getTopSelling.onclick = () => {
+    const category_id = document.querySelector('input[name="category_id_selling"]').value;
+    const start_date = document.querySelector('input[name="start_date"]').value;
+    const end_date = document.querySelector('input[name="end_date"]').value;
+    fetch(`http://localhost:3000/api/products/top-selling?category_id=${category_id}&start_date=${start_date}&end_date=${end_date}&token=${token}`)
+        .then(response => {
+            if (response.status === 401) {
+                alert('Token không hợp lệ. Lấy lại token.');
+                localStorage.removeItem('token');
+                refreshAccessToken();
+            } else {
+                window.open(`http://localhost:3000/api/products/top-selling?category_id=${category_id}&start_date=${start_date}&end_date=${end_date}&token=${token}`, '_blank');
+            }
+        })
+}
+
+const getTopRated = document.getElementById('get_top_rated');
+getTopRated.onclick = () => {
+    const category_id = document.querySelector('input[name="category_id_rated"]').value;
+    const min_review_count = document.querySelector('input[name="min_review_count"]').value;
+    fetch(`http://localhost:3000/api/products/top-rated?category_id=${category_id}&min_review_count=${min_review_count}&token=${token}`)
+        .then(response => {
+            if (response.status === 401) {
+                alert('Token không hợp lệ. Lấy lại token.');
+                localStorage.removeItem('token');
+                refreshAccessToken();
+            } else {
+                window.open(`http://localhost:3000/api/products/top-rated?category_id=${category_id}&min_review_count=${min_review_count}&token=${token}`, '_blank');
+            }
+        })
+}
+
+const getBrandsTopBySales = document.getElementById('get_brands_top_by_sales');
+getBrandsTopBySales.onclick = () => {
+    const category_id = document.querySelector('input[name="category_id_brands"]').value;
+    const start_date = document.querySelector('input[name="start_date_brand"]').value;
+    const end_date = document.querySelector('input[name="end_date_brand"]').value;
+    fetch(`http://localhost:3000/api/brands/top-by-sales?category_id=${category_id}&start_date=${start_date}&end_date=${end_date}&token=${token}`)
+        .then(response => {
+            if (response.status === 401) {
+                alert('Token không hợp lệ. Lấy lại token.');
+                localStorage.removeItem('token');
+                refreshAccessToken();
+            } else {
+                window.open(`http://localhost:3000/api/brands/top-by-sales?category_id=${category_id}&start_date=${start_date}&end_date=${end_date}&token=${token}`, '_blank');
+            }
+        })
+}
+
+const getTopStores = document.getElementById('get_stores_top_rated');
+getTopStores.onclick = () => {
+    const min_follower_count = document.querySelector('input[name="min_follower_count"]').value;
+    fetch(`http://localhost:3000/api/stores/top-rated?min_follower_count=${min_follower_count}&token=${token}`)
+        .then(response => {
+            if (response.status === 401) {
+                alert('Token không hợp lệ. Lấy lại token.');
+                localStorage.removeItem('token');
+                refreshAccessToken();
+            } else {
+                window.open(`http://localhost:3000/api/stores/top-rated?min_follower_count=${min_follower_count}&token=${token}`, '_blank');
+            }
+        })
+}
+
+const getRetentionRateSeller = document.getElementById('get_seller_retention_rate');
+getRetentionRateSeller.onclick = () => {
+    const seller_id = document.querySelector('input[name="seller_id_retention_rate"]').value;
+    const time_range = document.querySelector('input[name="time_range"]').value;
+    fetch(`http://localhost:3000/api/stores/${seller_id}/retention-rate?time_range=${time_range}&token=${token}`)
+        .then(response => {
+            if (response.status === 401) {
+                alert('Token không hợp lệ. Lấy lại token.');
+                localStorage.removeItem('token');
+                refreshAccessToken();
+            } else {
+                window.open(`http://localhost:3000/api/stores/${seller_id}/retention-rate?time_range=${time_range}&token=${token}`, '_blank');
+            }
+        })
+}

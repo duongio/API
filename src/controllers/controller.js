@@ -1,8 +1,9 @@
 const path = require('path');
 const jwt = require("jsonwebtoken");
-const { postLoginService, getCategoriesTreeService, getProductSearchService,
-    getRatingProductService, getSellerIdService, getProductDetailService,
-    postHistoryUserService, getTopProductInCategoryService } = require('../service/CRUDservice.js');
+const { postLoginService, getCategoriesTreeService, getProductSearchService, getRatingProductService,
+    getSellerIdService, getProductDetailService, postHistoryUserService, getTopProductInCategoryService,
+    getTopSellingService, getTopRatedService, getBrandsTopBySalesService, getStoresTopRatedService,
+    getRetentionRateSellerService } = require('../service/CRUDservice.js');
 
 const SECRET_KEY = process.env.SECRET_KEY;
 
@@ -73,7 +74,6 @@ const getProductRecommendation = async (req, res) => {
     }
 };
 
-
 const getRatingProduct = async (req, res) => {
     await getRatingProductService(req, res);
 }
@@ -90,8 +90,29 @@ const getTopProductInCategory = async (req, res) => {
     await getTopProductInCategoryService(req, res);
 }
 
+const getTopSelling = async (req, res) => {
+    await getTopSellingService(req, res);
+}
+
+const getTopRated = async (req, res) => {
+    await getTopRatedService(req, res);
+}
+
+const getBrandsTopBySales = async (req, res) => {
+    await getBrandsTopBySalesService(req, res);
+}
+
+const getStoresTopRated = async (req, res) => {
+    await getStoresTopRatedService(req, res);
+}
+
+const getRetentionRateSeller = async (req, res) => {
+    await getRetentionRateSellerService(req, res);
+}
+
 module.exports = {
     getHome, token, refreshToken, getLoginForm, postLogin,
     getCategoriesTree, getProductSearch, getProductDetail, getProductRecommendation,
-    getRatingProduct, getSellerId, postHistoryUser, getTopProductInCategory
+    getRatingProduct, getSellerId, postHistoryUser, getTopProductInCategory, getTopSelling,
+    getTopRated, getBrandsTopBySales, getStoresTopRated, getRetentionRateSeller
 }

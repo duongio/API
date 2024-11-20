@@ -24,7 +24,7 @@ const postLoginService = async (req, res) => {
             return res.status(401).json({ message: 'Username or password is incorrect' });
         }
         const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1m' });
-        const refreshToken = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1h' });
+        const refreshToken = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1d' });
         res.status(200).json({ message: 'Login successful', token: token, refreshToken: refreshToken, user_id: user.id })
     } catch (err) {
         console.error('Error check data:', err);
@@ -279,8 +279,217 @@ const getTopProductInCategoryService = async (req, res) => {
     }
 }
 
+const getTopSellingService = async (req, res) => {
+    await connectToDatabase();
+    const { category_id, start_date, end_date } = req.query;
+
+    try {
+        const request = new sql.Request();
+        request.input('category_id', sql.Int, category_id);
+        request.input('start_date', sql.DateTime, start_date);
+        request.input('end_date', sql.DateTime, end_date);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = (page - 1) * limit;
+
+        const result = await request.query(`
+            SELECT 
+                p.id AS product_id,
+                p.name,
+                p.all_time_quantity_sold,
+                c.category_name
+            FROM product p
+            JOIN categories c ON ',' + p.breadcrumbs_id + ',' LIKE '%,' + CAST(c.category_id AS VARCHAR) + ',%'
+            WHERE 
+                (',' + p.breadcrumbs_id + ',' LIKE '%,' + CAST(@category_id AS VARCHAR) + ',%')
+                AND EXISTS (
+                    SELECT 1
+                    FROM orders o
+                    WHERE 
+                        o.product_id = p.id 
+                        AND o.timeline_delivery_date BETWEEN @start_date AND @end_date
+                )
+            ORDER BY p.all_time_quantity_sold DESC
+            OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
+        `);
+
+        res.json({
+            category_id,
+            start_date,
+            end_date,
+            page,
+            limit,
+            product_list: result.recordset
+        });
+    } catch (err) {
+        console.error('Error check data:', err);
+        res.status(500).json({ message: 'Internal server error', error: err.message });
+    }
+}
+
+const getTopRatedService = async (req, res) => {
+    await connectToDatabase();
+    const { category_id, min_review_count } = req.query;
+
+    try {
+        const request = new sql.Request();
+        request.input('category_id', sql.Int, category_id);
+        request.input('min_review_count', sql.Int, min_review_count);
+
+        const result = await request.query(`
+            SELECT 
+                p.id AS product_id,
+                p.name,
+                p.rating_average,
+                p.review_count
+            FROM product p
+            JOIN categories c ON ',' + p.breadcrumbs_id + ',' LIKE '%,' + CAST(c.category_id AS VARCHAR) + ',%'
+            WHERE 
+                (',' + p.breadcrumbs_id + ',' LIKE '%,' + CAST(@category_id AS VARCHAR) + ',%')
+                AND (p.review_count >= @min_review_count OR @min_review_count IS NULL)
+            ORDER BY p.rating_average DESC
+        `);
+
+        res.json({
+            category_id,
+            min_review_count,
+            product_list: result.recordset
+        });
+    } catch (err) {
+        console.error('Error check data:', err);
+        res.status(500).json({ message: 'Internal server error', error: err.message });
+    }
+}
+
+const getBrandsTopBySalesService = async (req, res) => {
+    await connectToDatabase();
+    const { category_id, start_date, end_date } = req.query;
+
+    try {
+        const request = new sql.Request();
+        request.input('category_id', sql.Int, category_id);
+        request.input('start_date', sql.DateTime, start_date);
+        request.input('end_date', sql.DateTime, end_date);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = (page - 1) * limit;
+
+        const result = await request.query(`
+            SELECT 
+                p.brand_id,
+                p.brand_name,
+                COUNT(o.id) AS total_sales
+            FROM product p
+            JOIN orders o ON p.id = o.product_id
+            JOIN categories c ON ',' + p.breadcrumbs_id + ',' LIKE '%,' + CAST(c.category_id AS VARCHAR) + ',%'
+            WHERE 
+                o.timeline_delivery_date BETWEEN @start_date AND @end_date 
+                AND (',' + p.breadcrumbs_id + ',' LIKE '%,' + CAST(@category_id AS VARCHAR) + ',%')
+            GROUP BY p.brand_id, p.brand_name
+            ORDER BY total_sales DESC
+            OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
+        `);
+
+        res.json({
+            category_id,
+            start_date,
+            end_date,
+            page,
+            limit,
+            brand_list: result.recordset
+        });
+    } catch (err) {
+        console.error('Error check data:', err);
+        res.status(500).json({ message: 'Internal server error', error: err.message });
+    }
+}
+
+const getStoresTopRatedService = async (req, res) => {
+    await connectToDatabase();
+    const min_follower_count = req.query.min_follower_count ? parseInt(req.query.min_follower_count, 10) : null;
+
+    try {
+        const request = new sql.Request();
+        request.input('min_follower_count', sql.Int, min_follower_count);
+
+        const result = await request.query(`
+            SELECT 
+                s.seller_id,
+                s.seller_name,
+                s.rating_seller,
+                s.total_follower
+            FROM store s
+            WHERE (@min_follower_count IS NULL OR s.total_follower >= @min_follower_count)
+            ORDER BY s.rating_seller DESC,s.total_follower DESC
+        `);
+
+        res.json({
+            min_follower_count,
+            store_list: result.recordset
+        });
+    } catch (err) {
+        console.error('Error check data:', err);
+        res.status(500).json({ message: 'Internal server error', error: err.message });
+    }
+}
+
+const getRetentionRateSellerService = async (req, res) => {
+    await connectToDatabase();
+    const seller_id = req.params.seller_id;
+    const time_range = req.query.time_range;
+
+    try {
+        const request = new sql.Request();
+        request.input('seller_id', sql.Int, seller_id);
+        request.input('time_range', sql.Int, time_range);
+
+        const result = await request.query(`
+            WITH FirstPurchases AS (
+                SELECT 
+                    o.created_by_id AS customer_id,
+                    MIN(o.timeline_delivery_date) AS first_purchase_date
+                FROM orders o
+                JOIN product p ON o.product_id = p.id
+                WHERE 
+                    o.timeline_delivery_date BETWEEN 
+                        DATEADD(MONTH, -@time_range, GETDATE()) AND GETDATE()
+                    AND p.current_seller_id = @seller_id
+                GROUP BY o.created_by_id
+            ),
+            RepeatCustomers AS (
+                SELECT o.created_by_id AS customer_id
+                FROM orders o
+                JOIN product p ON o.product_id = p.id
+                WHERE 
+                    o.timeline_delivery_date BETWEEN 
+                        DATEADD(MONTH, -@time_range, GETDATE()) AND GETDATE()
+                    AND p.current_seller_id = @seller_id
+                GROUP BY o.created_by_id
+                HAVING COUNT(o.id) > 1
+            )
+            SELECT 
+                CAST(
+                    (COUNT(DISTINCT rc.customer_id) * 100.0) / 
+                    (SELECT COUNT(*) FROM FirstPurchases fp) AS DECIMAL(5,2)
+                ) AS retention_rate
+            FROM RepeatCustomers rc
+            JOIN FirstPurchases fp ON rc.customer_id = fp.customer_id
+        `);
+
+        res.json({
+            seller_id,
+            time_range,
+            retention_rate: result.recordset[0].retention_rate
+        })
+    } catch (err) {
+        console.error('Error check data:', err);
+        res.status(500).json({ message: 'Internal server error', error: err.message });
+    }
+}
+
 module.exports = {
-    postLoginService, getCategoriesTreeService, getProductSearchService,
-    getProductDetailService, getRatingProductService, getSellerIdService,
-    postHistoryUserService, getTopProductInCategoryService
+    postLoginService, getCategoriesTreeService, getProductSearchService, getProductDetailService,
+    getRatingProductService, getSellerIdService, postHistoryUserService, getTopProductInCategoryService,
+    getTopSellingService, getTopRatedService, getBrandsTopBySalesService, getStoresTopRatedService,
+    getRetentionRateSellerService
 }
